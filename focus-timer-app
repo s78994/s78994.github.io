@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Companion | Lofi Study Buddy</title>
+    <style>
+        :root {
+            --bg-color: #fdf6e3; /* Soft Cream */
+            --card-bg: #ffffff;
+            --accent-soft: #ffb7b2; /* Pastel Pink */
+            --accent-focus: #b2e2f2; /* Pastel Blue */
+            --accent-green: #b5ead7; /* Pastel Green */
+            --text-main: #5d576b;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body { 
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            font-family: var(--font-family);
+            color: var(--text-main);
+            padding: 20px 0;
+        }
+
+        .container {
+            text-align: center;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            width: 350px;
+        }
+
+        /* The Pet Styling */
+        .pet-display {
+            font-size: 80px;
+            margin-bottom: 10px;
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1));
+        }
+
+        .pet-display.bounce {
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Timer Styling */
+        .timer-display {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 5px 0;
+            color: var(--text-main);
+            letter-spacing: -2px;
+        }
+
+        .status-text {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            opacity: 0.7;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        /* Task List Styling */
+        .todo-section {
+            border-top: 2px dashed var(--bg-color);
+            padding-top: 20px;
+            text-align: left;
+        }
+
+        .todo-input-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--bg-color);
+            border-radius: 10px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-focus);
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        li {
+            padding: 10px;
+            background: var(--bg-color);
+            margin-bottom: 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        li.completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+            background: #f0f0f0;
+        }
+
+        .clear-btn {
+            width: 100%;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            background: #ffdfd3 !important;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            background: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        button:hover {
+            filter: brightness(0.95);
+            transform: translateY(-1px);
+        }
+
+        button#startBtn { background-color: var(--accent-focus); }
+        button#addBtn { background-color: var(--accent-green); }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Back Button */
+        .back-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <a href="#" class="back-link">← Back to Home</a>
+
+    <div class="container">
+        <div class="status-text" id="status">Zzz... Sleeping</div>
+        <div class="pet-display" id="pet">😴</div>
+        <div class="timer-display" id="timer">25:00</div>
+        
+        <div class="controls">
+            <button id="startBtn" onclick="startTimer()">Start</button>
+            <button id="pauseBtn" onclick="pauseTimer()">Pause</button>
+            <button id="resetBtn" onclick="resetTimer()">Reset</button>
+        </div>
+
+        <div class="todo-section">
+            <div class="todo-input-group">
+                <input type="text" id="taskInput" placeholder="Add a focus task...">
+                <button id="addBtn" onclick="addTask()">Add</button>
+            </div>
+            <ul id="taskList"></ul>
+            <button class="clear-btn" onclick="clearTasks()">Clear All Tasks</button>
+        </div>
+    </div>
+
+    <audio id="successSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+    <script>
+        // Timer Logic
+        let timeLeft = 25 * 60;
+        let timerId = null;
+        let isRunning = false;
+
+        const timerDisplay = document.getElementById('timer');
+        const petDisplay = document.getElementById('pet');
+        const statusText = document.getElementById('status');
+        const startBtn = document.getElementById('startBtn');
+        const successSound = document.getElementById('successSound');
+
+        // To-Do Logic
+        const taskInput = document.getElementById('taskInput');
+        const taskList = document.getElementById('taskList');
+        let tasks = JSON.parse(localStorage.getItem('focusTasks')) || [];
+
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.title = `${timerDisplay.textContent} - Focus Companion`;
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            isRunning = true;
+            startBtn.disabled = true;
+            petDisplay.textContent = '😎';
+            petDisplay.classList.add('bounce');
+            statusText.textContent = 'Stay Focused!';
+            timerId = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    completeSession();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(timerId);
+            isRunning = false;
+            startBtn.disabled = false;
+            petDisplay.classList.remove('bounce');
+            petDisplay.textContent = '🤔';
+            statusText.textContent = 'Paused';
+        }
+
+        function resetTimer() {
+            clearInterval(timerId);
+            isRunning = false;
+            startBtn.disabled = false;
+            timeLeft = 25 * 60;
+            petDisplay.textContent = '😴';
+            petDisplay.classList.remove('bounce');
+            statusText.textContent = 'Zzz... Sleeping';
+            updateDisplay();
+        }
+
+        function completeSession() {
+            isRunning = false;
+            startBtn.disabled = false;
+            petDisplay.textContent = '🥳';
+            petDisplay.classList.remove('bounce');
+            statusText.textContent = 'Great Job!';
+            successSound.play();
+            alert("Session complete! Time for a short break.");
+        }
+
+        // To-Do Functions
+        function renderTasks() {
+            taskList.innerHTML = '';
+            tasks.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.textContent = task.text;
+                if (task.completed) li.classList.add('completed');
+                li.onclick = () => toggleTask(index);
+                taskList.appendChild(li);
+            });
+            localStorage.setItem('focusTasks', JSON.stringify(tasks));
+        }
+
+        function addTask() {
+            const text = taskInput.value.trim();
+            if (text) {
+                tasks.push({ text, completed: false });
+                taskInput.value = '';
+                renderTasks();
+            }
+        }
+
+        function toggleTask(index) {
+            tasks[index].completed = !tasks[index].completed;
+            renderTasks();
+        }
+
+        function clearTasks() {
+            if(confirm("Clear all tasks?")) {
+                tasks = [];
+                renderTasks();
+            }
+        }
+
+        // Allow 'Enter' key for adding tasks
+        taskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+
+        // Initialize
+        updateDisplay();
+        renderTasks();
+    </script>
+</body>
+</html>
